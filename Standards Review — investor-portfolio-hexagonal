@@ -1,0 +1,197 @@
+# Standards Review — investor-portfolio-hexagonal
+
+**Reviewed against:** `template-microservice` (`portfolio-service`) hexagonal architecture template
+**Scope:** `investor-portfolio-hexagonal/` — static review only, code not executed
+**Date:** 2026-08-13
+
+This document summarizes how closely the team's implementation follows the hexagonal
+architecture standards established in `template-microservice`, what deviates, what needs
+attention before this goes further, and what must not be done going forward.
+
+---
+
+## 1. Architecture & Structure
+
+### ✅ Followed
+- Correct layering: `domain → application (port/in, port/out, service) → adapter (in/web, out/persistence)`.
+- `domain` package has zero framework dependencies (no Spring, no JPA, no Servlet imports) — matches the core rule of domain purity.
+- Ports defined as interfaces in both directions (`application/port/in`, `application/port/out`), implemented by `*Service` classes and `*PersistenceAdapter` classes respectively.
+- Package-private visibility used correctly on some adapter classes (e.g. `InvestorPersistenceAdapter`, `PersistenceMapper`).
+
+### ❌ Not followed
+- No architecture fitness test. `template-microservice` has `HexagonalArchitectureTest` (ArchUnit) in `bootstrap/src/test/.../architecture/` that fails the build if domain imports a framework type, if application depends on adapters, or if adapters depend on each other. Nothing enforces the layering here beyond convention — a future change can silently break it and nobody will know.
+- No DTO boundary. `template-microservice` maps domain objects to `record`-based `*Request`/`*Response` DTOs at the web adapter (`*Response.of(domain)`). Here, domain-model classes from `domain/model/` are serialized directly as HTTP responses (e.g. `InvestorPortfolioResponse`, `FamilyMfPortfolioResponse`).
+- JPA entities and domain models share simple class names in different packages (e.g. `adapter/out/persistence/entity/primary/User.java` vs `domain/model/User.java`, no `JpaEntity` suffix) — collision-prone, and diverges from the `*JpaEntity` naming convention in the reference.
+
+### 🔧 Needs attention
+- Add an ArchUnit (or equivalent) fitness test before this pattern is reused as a template for other teams — otherwise "hexagonal" is only true today, not guaranteed tomorrow.
+- Decide, as a team, whether skipping the DTO layer is an accepted tradeoff (README justifies it as avoiding remapping ~200 fields) or technical debt to schedule.
+
+---
+
+## 2. Naming Conventions
+
+### ✅ Followed
+- `*UseCase` for inbound ports (`GetInvestorPortfolioUseCase`, `ConvertToMobilePortfolioUseCase`).
+- `*Port` for outbound ports (`LoadInvestorPort`, `LoadCamsFolioMasterPort`).
+- `*Service` implementing the matching `*UseCase`.
+- `*PersistenceAdapter` implementing a `Load*Port`.
+- `*Mapper` for transformation classes (`PersistenceMapper`, `CapitalGainReportMapper`, `MobilePortfolioMapper`).
+
+### ❌ Not followed
+- No `*Request`/`*Response` DTO naming — API layer returns domain models directly.
+- Domain/entity field names use snake_case (`type_id`, `client_name`, `is_purchase_allowed`) instead of Java camelCase — deliberate per README (DB column fidelity), but a deviation from normal Java and from the reference's convention table.
+- Mixed snake_case/camelCase `@RequestParam` names in the same controller (e.g. `financial_year` alongside camelCase params).
+
+### 🔧 Needs attention
+- If snake_case fields are intentional (legacy fidelity), document this explicitly as an approved exception in this repo's own coding guidelines doc (see §7) so it doesn't get "fixed" inconsistently later.
+
+---
+
+## 3. Coding Guidelines
+
+### ✅ Followed
+- Constructor injection (`@RequiredArgsConstructor`, `private final`) used correctly in the web controller and all 13 persistence adapters.
+- Interfaces used consistently for both port directions.
+
+### ❌ Not followed — these are the most important gaps
+- **Dependency injection inconsistency.** All 4 `application/service/*Service` classes (`InvestorPortfolioService`, `InvestorTaxReportService`, `FamilyMfPortfolioService`, `FolioMasterSummaryService`) use field-level `@Autowired` injection instead of constructor injection. This is the layer the reference template is strictest about (`final` fields, constructor-only, no field `@Autowired`).
+- **No validation.** Zero `jakarta.validation`, `@Valid`, `@NotNull`, `@NotBlank` anywhere in `src/main`. Reference validates at the boundary and re-validates domain invariants.
+- **No exception handling strategy.**
+  - Zero custom exception types.
+  - No `@RestControllerAdvice`/`@ExceptionHandler` anywhere.
+  - `InvestorPortfolioController` wraps one endpoint (`getInvestorPortfolioNew`) in `catch (Exception e) { e.printStackTrace(); return ResponseEntity.badRequest().build(); }` — this converts every failure, including genuine bugs, into an HTTP 400 with no error detail.
+  - The second endpoint (`getTaxReportsNew`) has **no** try/catch at all — any internal failure there surfaces as a bare, unstructured HTTP 500.
+  - Reference: single `GlobalExceptionHandler`, RFC 7807 `ProblemDetail` responses, typed `ErrorCode` taxonomy, no stack traces ever returned to the client.
+- **No logging framework.** Zero SLF4J usage anywhere. 16 occurrences of `System.out.println` / `e.printStackTrace()` carried over from the legacy service (acknowledged in the README as a known compromise, not fixed).
+- **Wildcard imports** in `InvestorPortfolioService.java` (`import com.hexagonal.portfolio.application.port.out.*;`, `import com.hexagonal.portfolio.domain.model.*;`), inconsistent with explicit imports used elsewhere in the codebase.
+- **Leftover porting artifact**: `InvestorPortfolioService.java` line 62 contains the comment `// ---- newly required repositories (create these interfaces if they don't exist yet) ----` — reads as an unedited AI/manual porting note left in production code.
+- `application/service` classes are all `public`, where the reference keeps implementation classes package-private and only exposes ports publicly.
+
+### 🔧 Needs attention (priority order)
+1. Convert all `application/service` classes from field injection to constructor injection.
+2. Add a `GlobalExceptionHandler` and make both controller endpoints consistent — no bare `catch(Exception)` masking bugs as 400, no unhandled path defaulting to a raw 500.
+3. Replace `System.out.println`/`printStackTrace` with SLF4J logging.
+4. Add request validation (`@Valid`, Bean Validation) at the controller boundary.
+5. Remove wildcard imports and the leftover porting comment.
+
+---
+
+## 4. Unit Test Coverage
+
+### ✅ Followed
+- Correct framework stack: JUnit 5 + Mockito + AssertJ + `MockMvc` (standalone setup) — matches the reference stack.
+- Test naming and style are good where present: `InvestorPortfolioControllerTest` uses `@Nested`, `@DisplayName`, `@ParameterizedTest`, mirrors the reference's readability conventions.
+
+### ❌ Not followed — critical gap
+Only **2 test files exist for 108 main classes**:
+- `InvestorPortfolioControllerTest` (good coverage of the controller)
+- `MfboxUtilsTest` (covers one utility class)
+
+**Entirely untested** (no test file at all):
+- `InvestorPortfolioService` (3,453 lines) — the largest and most business-critical class in the service
+- `InvestorTaxReportService` (1,286 lines)
+- `FamilyMfPortfolioService` (374 lines)
+- `FolioMasterSummaryService` (289 lines)
+- `CapitalGainReportMapper` (455 lines), `MobilePortfolioMapper` (265 lines)
+- All 13 classes in `adapter/out/persistence/*PersistenceAdapter`
+- `PersistenceMapper` (generic reflective `BeanUtils` mapper — failure modes untested)
+- `XIRR` (256-line numerical solver — exactly the kind of code that most needs edge-case unit tests: convergence failure, negative cash flows, single transaction, etc.)
+- `MyMFBoxUtils`, `TrackerUtils`, `TransactionDataUtils`
+
+No JaCoCo (or any) coverage gate is configured, so this gap won't show up as a build failure — it will only show up as a production incident.
+
+### 🔧 Needs attention — this is the single biggest risk in the codebase
+- Prioritize unit tests for `InvestorPortfolioService`, `InvestorTaxReportService`, and `XIRR` first — highest line count and highest financial-calculation risk.
+- Add persistence adapter tests (even simple Mockito-based ones, or `@DataJpaTest` if a test DB is available).
+- Configure a JaCoCo coverage floor on `application` and `domain` packages, matching the reference's 80% instruction-coverage gate.
+- The README's claim of being "diffed against original" is a manual/textual check, not automated test coverage — do not treat it as equivalent to unit tests.
+
+---
+
+## 5. Build & Tooling
+
+### ✅ Followed
+- Standard Maven/Spring Boot project layout, dependencies declared cleanly, Lombok used consistently for boilerplate reduction.
+
+### ❌ Not followed
+`pom.xml` (`investor-portfolio-hexagonal/pom.xml`) has only the `spring-boot-maven-plugin`. None of the following present in the reference are configured:
+- Checkstyle
+- PMD / SpotBugs
+- Error Prone + NullAway
+- JaCoCo
+- Spotless (formatting)
+- OWASP dependency-check
+
+Java 17 is used here vs Java 21 in `template-microservice` — not inherently wrong, but worth aligning if this is meant to become the team's shared baseline going forward.
+
+### 🔧 Needs attention
+- At minimum, add Checkstyle + JaCoCo to match the reference's non-negotiables before this pattern is copied to a third service.
+
+---
+
+## 6. Configuration & Security
+
+These are deploy-blocking and should be treated as more urgent than style/test gaps.
+
+### ❌ Not followed / must fix before any shared or production deployment
+- **Plaintext secrets committed**: `application-dev.properties` and `application-prod.properties` contain hardcoded DB credentials (e.g. `Mfbox@96860!$`, `Amfi@96860!$`) and a plaintext `jwt.secret-key`. If this repository has been pushed to any shared remote, these credentials must be treated as compromised and rotated.
+- **Prod port collision**: `application-prod.properties` uses port 8080 — the same port the legacy sibling service `investor-portfolio-service` uses in production. This will conflict at deploy time. Self-reported in the README as an unresolved known issue.
+- **Dev config not portable**: `application-dev.properties` references another developer's local absolute Windows paths (`D:/GitHub/themfbox-microservices/investor-portfolio-service/...`) for `pdfDir`/`fontDir` — will break on any other machine.
+- **Dead configuration**: `eureka.client.*` properties are set in dev/prod properties, but there is no `spring-cloud`/Eureka dependency in `pom.xml`. This config currently does nothing and may confuse whoever debugs service discovery later.
+
+### 🔧 Needs attention
+- Move all secrets to environment variables (`${ENV_VAR}` pattern, as in the reference) or a secrets manager — never commit plaintext credentials, even in "dev" profiles.
+- Reassign the prod port before this and the legacy service are ever deployed together.
+- Either remove the Eureka properties or add the actual dependency, but don't leave config that silently does nothing.
+- Parameterize file paths (`pdfDir`, `fontDir`, etc.) instead of hardcoding a developer's local path.
+
+---
+
+## 7. Documentation
+
+### ✅ Followed
+- One README exists and is unusually candid — it documents its own known issues and "not yet done" items rather than hiding them. This is good practice and should be kept.
+
+### ❌ Not followed
+- No `ARCHITECTURE.md`, `CODING-GUIDELINES.md`, ADRs, or `CONTRIBUTING.md` — all present in the reference and used there to make conventions explicit rather than tribal knowledge.
+
+### 🔧 Needs attention
+- At minimum, port over a short `CODING-GUIDELINES.md` documenting the naming table and the approved exceptions specific to this service (e.g. snake_case fields, no-DTO-layer decision), so future contributors don't "fix" intentional deviations or repeat unintentional ones.
+
+---
+
+## 8. CI/CD
+
+No `.github/workflows`, Dockerfile, or `docker-compose.yml` in either this repo or the reference — not a regression, but also not yet solved anywhere. Worth solving once for both.
+
+---
+
+## What You Should NOT Do
+
+- **Do not** add more business logic to `InvestorPortfolioService` or `InvestorTaxReportService` before adding tests — the class is already 3,453 lines with zero coverage; growing it further compounds the risk.
+- **Do not** deploy `application-prod.properties` as-is — the port collision with the legacy service and the plaintext secrets make this unsafe to run in a shared environment.
+- **Do not** treat the "diffed against original" note in the README as equivalent to automated test coverage when deciding this service is production-ready — it is not.
+- **Do not** copy the field-injection pattern in `application/service/*` or the inconsistent try/catch pattern in `InvestorPortfolioController` into new services — these are the two coding-guideline deviations most likely to spread if this becomes the next template.
+- **Do not** silently "fix" the snake_case field names or the direct domain-as-response pattern without team agreement — both appear to be deliberate tradeoffs (legacy fidelity, avoiding a 200-field remap), not oversights. Confirm before changing.
+- **Do not** reuse this repository as a new team template until at minimum: constructor injection is applied uniformly, a global exception handler exists, secrets are externalized, and the core business-logic classes have unit tests. Copying it today would propagate all of the above gaps to every future service.
+
+---
+
+## Summary
+
+| Category | Status |
+|---|---|
+| Architecture / layering | ✅ Followed |
+| Naming conventions | ✅ Mostly followed (DTO layer missing) |
+| Dependency injection | ❌ Inconsistent (services use field injection) |
+| Validation | ❌ Not implemented |
+| Exception handling | ❌ Not implemented / inconsistent |
+| Logging | ❌ Not implemented (println/printStackTrace only) |
+| Unit test coverage | ❌ Critical gap — business logic untested |
+| Build quality gates | ❌ Not configured |
+| Secrets / config | ❌ Deploy-blocking issues present |
+| Documentation | ⚠️ Partial (good README, missing standards docs) |
+| CI/CD | ⚠️ Absent in both repos |
+
+**Bottom line:** the team correctly followed the hexagonal layering and port/adapter naming pattern from `template-microservice`. Everything downstream of that — dependency injection discipline, error handling, validation, logging, automated testing, and build-quality gates — falls short of the established baseline. The highest-priority items are the zero test coverage on the business-logic layer and the deploy-blocking security/config issues; both should be resolved before this service goes further or is used as a template for other teams.
