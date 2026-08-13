@@ -1,0 +1,98 @@
+#-------------------------------------------------------------------------------
+# Spring Boot, Maven, and Gradle
+#-------------------------------------------------------------------------------
+
+# Build artifacts (for Maven and Gradle)
+target/
+build/
+
+# Package files
+*.jar
+*.war
+*.ear
+*.zip
+
+# Compiled class files
+*.class
+
+# Log files
+logs/
+*.log
+
+# Temp files
+*.tmp
+
+# Ignore dependencies (use Maven/Gradle to fetch them)
+# Note: For some projects, you might want to explicitly not ignore these if they are managed manually.
+# But for most Spring Boot projects, this is fine.
+
+# IDE configuration files
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# Eclipse
+.project
+.classpath
+.settings/
+*.apt_generated
+.factorypath
+
+# VS Code
+.vscode/
+
+# Operating System files
+# macOS
+.DS_Store
+.AppleDouble
+.apdisk
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Maven wrapper and dependencies
+# The wrapper files themselves should be tracked for project portability
+# The downloaded JARs should be ignored
+.mvn/wrapper/maven-wrapper.jar
+!/.mvn/wrapper/maven-wrapper.jar
+
+# Gradle wrapper and dependencies
+# The wrapper files themselves should be tracked for project portability
+# The downloaded binaries should be ignored
+!/gradle/wrapper/gradle-wrapper.jar
+/gradle/wrapper/gradle-wrapper.jar
+
+# Environment files
+# Keep your credentials and secrets out of version control
+.env
+# Example properties files for database connection strings, passwords, etc.
+# These should be managed separately for each environment and not committed.
+# application.properties
+# application.yml
+
+# Spring Boot specific files
+# Spring Tool Suite (STS)
+.sts4-cache/
+.springBeans
+
+# Testing and coverage reports
+/target/surefire-reports/
+/target/test-reports/
+/target/site/
+/coverage/
+
+# Misc
+*.bak
+*.swp
+
+ruff.*
+
+*.dbf
+
+*.sql
+
+brokerage-service/src/main/resources/upload/
