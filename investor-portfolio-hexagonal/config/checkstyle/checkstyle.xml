@@ -1,0 +1,112 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+        "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+        "https://checkstyle.org/dtds/configuration_1_3.dtd">
+
+<!--
+  Project Checkstyle rules for investor-portfolio-hexagonal.
+
+  WHY NOT google_checks.xml
+  Running Google's ruleset over this codebase reports 13,888 violations across 13,777 lines.
+  Broken down: ~10,900 (78%) are layout — indentation, brace placement, blank lines, line
+  length — and ~2,476 (18%) are naming, because the ported code deliberately keeps the
+  database's snake_case field names. That leaves ~3% describing anything that could actually
+  misbehave.
+
+  Enforcing the layout rules would mean reformatting every line, which destroys this service's
+  line-for-line diff against investor-portfolio-service — the evidence behind the README's
+  fidelity table and the response-diff that has not been run yet. Enforcing the naming rules
+  would mean renaming fields the standards review explicitly says not to touch without team
+  agreement.
+
+  So this ruleset drops both categories on purpose and keeps the checks that catch defects.
+  Every omission below is a decision, not an oversight; the two approved exceptions are:
+
+    1. snake_case members, parameters and locals   (DB column fidelity)
+    2. the ported file layout                      (legacy diffability)
+
+  Both should be recorded in CODING-GUIDELINES.md per section 7 of the review. When the
+  response-diff has been run and the legacy source is no longer the reference, the layout
+  exception can be retired and Spotless promoted to a full formatter.
+-->
+<module name="Checker">
+    <property name="severity" value="warning"/>
+    <property name="fileExtensions" value="java"/>
+
+    <module name="SuppressionFilter">
+        <property name="file" value="${checkstyle.suppressions.file}"/>
+    </module>
+
+    <!-- Lombok and other generated members must not be judged as hand-written code. -->
+    <module name="SuppressWarningsFilter"/>
+
+    <module name="NewlineAtEndOfFile"/>
+    <module name="FileTabCharacter"/>
+
+    <module name="TreeWalker">
+        <module name="SuppressWarningsHolder"/>
+
+        <!-- Imports: real hygiene, and cheap to keep clean. -->
+        <module name="UnusedImports">
+            <property name="processJavadoc" value="true"/>
+        </module>
+        <module name="RedundantImport"/>
+        <module name="AvoidStarImport"/>
+        <module name="IllegalImport"/>
+
+        <!-- Correctness: each of these describes a way code silently misbehaves. -->
+        <module name="EqualsHashCode"/>
+        <module name="CovariantEquals"/>
+        <module name="StringLiteralEquality"/>
+        <module name="NeedBraces"/>
+        <module name="FallThrough"/>
+        <module name="MissingSwitchDefault"/>
+        <module name="DefaultComesLast"/>
+        <module name="EmptyStatement"/>
+        <module name="SimplifyBooleanExpression"/>
+        <module name="SimplifyBooleanReturn"/>
+        <module name="IllegalInstantiation"/>
+        <module name="ModifiedControlVariable"/>
+        <module name="MultipleVariableDeclarations"/>
+        <module name="OneStatementPerLine"/>
+        <module name="NoFinalizer"/>
+        <module name="EqualsAvoidNull"/>
+        <module name="SuperClone"/>
+        <module name="SuperFinalize"/>
+        <module name="PackageDeclaration"/>
+        <module name="ArrayTypeStyle"/>
+        <module name="UpperEll"/>
+
+        <!-- Debug output must not creep back in; SLF4J is the agreed route. -->
+        <module name="Regexp">
+            <property name="format" value="System\.(out|err)\.print"/>
+            <property name="illegalPattern" value="true"/>
+            <property name="message"
+                      value="Use SLF4J rather than printing to the console."/>
+        </module>
+        <module name="Regexp">
+            <property name="format" value="\.printStackTrace\(\)"/>
+            <property name="illegalPattern" value="true"/>
+            <property name="message"
+                      value="Log the exception through SLF4J rather than printing its stack trace."/>
+        </module>
+
+        <!-- Field injection is the deviation the review flagged first; keep it gone. -->
+        <module name="Regexp">
+            <property name="format" value="@Autowired\s*(\r?\n\s*)?(private|protected|public)\s+\w"/>
+            <property name="illegalPattern" value="true"/>
+            <property name="message"
+                      value="Inject through the constructor rather than annotating the field."/>
+        </module>
+
+        <!--
+          Deliberately NOT enabled, with reasons:
+            Indentation, LeftCurly, RightCurly, WhitespaceAround, EmptyLineSeparator,
+            LineLength, OperatorWrap  -> would force a reformat of the ported source
+            MemberName, ParameterName, LocalVariableName, AbbreviationAsWordInName
+                                      -> would force renaming the snake_case DB fields
+            MissingJavadocMethod/Type -> ported code carries the legacy comments; adding
+                                         javadoc wholesale would be noise, not documentation
+        -->
+    </module>
+</module>

@@ -1,24 +1,56 @@
 package com.hexagonal.portfolio.application.service;
 
+import java.text.DecimalFormat;
+import java.text.Format;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+import org.hibernate.internal.util.StringHelper;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
 import com.hexagonal.portfolio.application.port.in.GetInvestorPortfolioUseCase;
-import com.hexagonal.portfolio.application.port.out.*;
+import com.hexagonal.portfolio.application.port.out.LoadCamsFolioMasterPort;
+import com.hexagonal.portfolio.application.port.out.LoadCamsTransactionPort;
+import com.hexagonal.portfolio.application.port.out.LoadFundScorePort;
+import com.hexagonal.portfolio.application.port.out.LoadHealthCheckupPort;
+import com.hexagonal.portfolio.application.port.out.LoadInvestorPort;
+import com.hexagonal.portfolio.application.port.out.LoadKarvyFolioMasterPort;
+import com.hexagonal.portfolio.application.port.out.LoadKarvyTransactionPort;
+import com.hexagonal.portfolio.application.port.out.LoadLatestNavPort;
+import com.hexagonal.portfolio.application.port.out.LoadManualTransactionPort;
+import com.hexagonal.portfolio.application.port.out.LoadNavHistoryPort;
+import com.hexagonal.portfolio.application.port.out.LoadSchemeMasterPort;
+import com.hexagonal.portfolio.application.port.out.LoadSipRegistrationPort;
+import com.hexagonal.portfolio.application.port.out.TransactionTypeConfigPort;
 import com.hexagonal.portfolio.domain.model.FundScoreInfo;
-import com.hexagonal.portfolio.domain.model.*;
+import com.hexagonal.portfolio.domain.model.InvestorMasterCams;
+import com.hexagonal.portfolio.domain.model.InvestorMasterKarvy;
+import com.hexagonal.portfolio.domain.model.InvestorPortfolioResponse;
+import com.hexagonal.portfolio.domain.model.InvestorSchemeWisePortfolioResponse;
+import com.hexagonal.portfolio.domain.model.InvestorSchemeWiseTransactionResponse;
+import com.hexagonal.portfolio.domain.model.InvestorSipCams49;
+import com.hexagonal.portfolio.domain.model.InvestorTransactionCams;
+import com.hexagonal.portfolio.domain.model.InvestorTransactionKarvy;
+import com.hexagonal.portfolio.domain.model.PortfolioTransactions;
+import com.hexagonal.portfolio.domain.model.User;
+import com.hexagonal.portfolio.domain.model.XirrResponse;
 import com.hexagonal.portfolio.domain.service.MfboxUtils;
 import com.hexagonal.portfolio.domain.service.MyMFBoxUtils;
 import com.hexagonal.portfolio.domain.service.TransactionDataUtils;
 import com.hexagonal.portfolio.domain.service.XIRR;
-import org.hibernate.internal.util.StringHelper;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
 
-import java.text.DecimalFormat;
-import java.text.Format;
-import java.text.SimpleDateFormat;
-import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Application service implementing the investor-portfolio valuation use case.
@@ -35,51 +67,56 @@ import java.util.stream.IntStream;
  * {@code com.hexagonal.portfolio.application.port.out}, which the persistence adapters
  * implement. Nothing here knows about JPA, HTTP or the database.
  */
+@Slf4j
 @Service
-public class InvestorPortfolioService implements GetInvestorPortfolioUseCase {
+class InvestorPortfolioService implements GetInvestorPortfolioUseCase {
 
-    @Value("${amc.logo.url}")
-    private String amcLogoPath;
+    private final String amcLogoPath;
 
-    @Autowired
-    private TransactionTypeConfigPort transactionTypeConfigPort;
+    private final TransactionTypeConfigPort transactionTypeConfigPort;
+    private final LoadInvestorPort loadInvestorPort;
+    private final LoadSipRegistrationPort loadSipRegistrationPort;
+    private final LoadCamsTransactionPort loadCamsTransactionPort;
+    private final LoadKarvyTransactionPort loadKarvyTransactionPort;
+    private final LoadManualTransactionPort loadManualTransactionPort;
+    private final LoadCamsFolioMasterPort loadCamsFolioMasterPort;
+    private final LoadKarvyFolioMasterPort loadKarvyFolioMasterPort;
+    private final LoadSchemeMasterPort loadSchemeMasterPort;
+    private final LoadLatestNavPort loadLatestNavPort;
+    private final LoadNavHistoryPort loadNavHistoryPort;
+    private final LoadFundScorePort loadFundScorePort;
+    private final LoadHealthCheckupPort loadHealthCheckupPort;
 
-    @Autowired
-    private LoadInvestorPort loadInvestorPort;
-
-    @Autowired
-    private LoadSipRegistrationPort loadSipRegistrationPort;
-
-    @Autowired
-    private LoadCamsTransactionPort loadCamsTransactionPort;
-
-    @Autowired
-    private LoadKarvyTransactionPort loadKarvyTransactionPort;
-
-    @Autowired
-    private LoadManualTransactionPort loadManualTransactionPort;
-
-    // ---- newly required repositories (create these interfaces if they don't exist yet) ----
-    @Autowired
-    private LoadCamsFolioMasterPort loadCamsFolioMasterPort;
-
-    @Autowired
-    private LoadKarvyFolioMasterPort loadKarvyFolioMasterPort;
-
-    @Autowired
-    private LoadSchemeMasterPort loadSchemeMasterPort;
-
-    @Autowired
-    private LoadLatestNavPort loadLatestNavPort;
-
-    @Autowired
-    private LoadNavHistoryPort loadNavHistoryPort;
-
-    @Autowired
-    private LoadFundScorePort loadFundScorePort;
-
-    @Autowired
-    private LoadHealthCheckupPort loadHealthCheckupPort;
+    public InvestorPortfolioService(
+            @Value("${amc.logo.url}") String amcLogoPath,
+            TransactionTypeConfigPort transactionTypeConfigPort,
+            LoadInvestorPort loadInvestorPort,
+            LoadSipRegistrationPort loadSipRegistrationPort,
+            LoadCamsTransactionPort loadCamsTransactionPort,
+            LoadKarvyTransactionPort loadKarvyTransactionPort,
+            LoadManualTransactionPort loadManualTransactionPort,
+            LoadCamsFolioMasterPort loadCamsFolioMasterPort,
+            LoadKarvyFolioMasterPort loadKarvyFolioMasterPort,
+            LoadSchemeMasterPort loadSchemeMasterPort,
+            LoadLatestNavPort loadLatestNavPort,
+            LoadNavHistoryPort loadNavHistoryPort,
+            LoadFundScorePort loadFundScorePort,
+            LoadHealthCheckupPort loadHealthCheckupPort) {
+        this.amcLogoPath = amcLogoPath;
+        this.transactionTypeConfigPort = transactionTypeConfigPort;
+        this.loadInvestorPort = loadInvestorPort;
+        this.loadSipRegistrationPort = loadSipRegistrationPort;
+        this.loadCamsTransactionPort = loadCamsTransactionPort;
+        this.loadKarvyTransactionPort = loadKarvyTransactionPort;
+        this.loadManualTransactionPort = loadManualTransactionPort;
+        this.loadCamsFolioMasterPort = loadCamsFolioMasterPort;
+        this.loadKarvyFolioMasterPort = loadKarvyFolioMasterPort;
+        this.loadSchemeMasterPort = loadSchemeMasterPort;
+        this.loadLatestNavPort = loadLatestNavPort;
+        this.loadNavHistoryPort = loadNavHistoryPort;
+        this.loadFundScorePort = loadFundScorePort;
+        this.loadHealthCheckupPort = loadHealthCheckupPort;
+    }
 
     @Override
     public InvestorPortfolioResponse getInvestorPortfolioNew(
@@ -474,7 +511,10 @@ public class InvestorPortfolioService implements GetInvestorPortfolioUseCase {
             investorPortfolioResponse.setInvestorSchemeWisePortfolioResponses(investorSchemeWisePortfolioResponseList);
 
         } catch (Exception ex) {
-            ex.printStackTrace();
+            // Behaviour carried over from the legacy service: the exception is swallowed and a
+            // partially-built response is returned. Logged rather than printed, but the swallow
+            // itself is left in place — changing it would alter what this endpoint emits.
+            log.error("Valuation failed for userId={}; returning a partially-built portfolio", user_id, ex);
         }
         return investorPortfolioResponse;
     }

@@ -1,0 +1,48 @@
+# Local run of the packaged service.
+#
+#     cp .env.example .env      # fill in the four DB_* values
+#     docker compose up --build
+#
+# No database service is defined: this is a read model over existing MySQL schemas
+# (mfportfolio and advisorkhoj_amfi) that live outside this repository. Point the
+# DB_*_URL variables at whichever instance you mean to read.
+
+services:
+  investor-portfolio:
+    build:
+      context: .
+    image: investor-portfolio-hexagonal:local
+    container_name: investor-portfolio-hexagonal
+
+    # Credentials come from .env, which is gitignored. Never inline them here —
+    # docker-compose.yml is committed.
+    env_file:
+      - .env
+
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      SERVER_PORT: ${SERVER_PORT:-8090}
+
+    ports:
+      - "${SERVER_PORT:-8090}:${SERVER_PORT:-8090}"
+
+    restart: unless-stopped
+
+    # Uses the HEALTHCHECK baked into the image.
+    healthcheck:
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+    # A read model needs no write access to its own filesystem.
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+
+    deploy:
+      resources:
+        limits:
+          memory: 1g

@@ -5,6 +5,9 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.core.env.ConfigurableEnvironment;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @SpringBootApplication
 public class HexagonalPortfolioApplication
 {
@@ -19,13 +22,13 @@ public class HexagonalPortfolioApplication
 
         if (activeProfile.equalsIgnoreCase("prod"))
         {
-            System.out.println("✅ Hexagonal Portfolio Services Production Server started!");
+            log.info("Hexagonal Portfolio Services Production Server started!");
         } else if (activeProfile.equalsIgnoreCase("dev"))
         {
-            System.out.println("✅ Hexagonal Portfolio Services Development Server started!");
+            log.info("Hexagonal Portfolio Services Development Server started!");
         } else
         {
-            System.out.println("✅ Hexagonal Portfolio Services "+activeProfile+" Server started!");
+            log.info("Hexagonal Portfolio Services {} Server started!", activeProfile);
         }
     }
 }

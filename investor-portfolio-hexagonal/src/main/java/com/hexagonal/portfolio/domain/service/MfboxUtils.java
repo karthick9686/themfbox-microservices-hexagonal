@@ -4,10 +4,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * Portfolio domain rules carried over verbatim from the legacy {@code MfboxUtils}.
  * Only the members reachable from the investor-portfolio use case are retained.
  */
+@Slf4j
 public class MfboxUtils
 {
 
@@ -59,11 +62,11 @@ public class MfboxUtils
             segregated_map.put("RMFMIQP","3.33"); //NIPPON INDIA HYBRID BOND FUND
             segregated_map.put("RMFMIDD","3.33"); //NIPPON INDIA HYBRID BOND FUND
 
-        	/*segregated_map.put("RMFCBGP","0.37"); //NIPPON INDIA STRATEGIC DEBT FUND //AXQPS2410K EF this pan nav not reduced in tax report
-        	segregated_map.put("RMFCBDP","0.37"); //NIPPON INDIA STRATEGIC DEBT FUND
-        	segregated_map.put("RMFCBMP","0.37"); //NIPPON INDIA STRATEGIC DEBT FUND
-        	segregated_map.put("RMFCBQP","0.37"); //NIPPON INDIA STRATEGIC DEBT FUND
-        	segregated_map.put("RMFCBDD","0.37"); //NIPPON INDIA STRATEGIC DEBT FUND*/
+            /*segregated_map.put("RMFCBGP","0.37"); //NIPPON INDIA STRATEGIC DEBT FUND //AXQPS2410K EF this pan nav not reduced in tax report
+            segregated_map.put("RMFCBDP","0.37"); //NIPPON INDIA STRATEGIC DEBT FUND
+            segregated_map.put("RMFCBMP","0.37"); //NIPPON INDIA STRATEGIC DEBT FUND
+            segregated_map.put("RMFCBQP","0.37"); //NIPPON INDIA STRATEGIC DEBT FUND
+            segregated_map.put("RMFCBDD","0.37"); //NIPPON INDIA STRATEGIC DEBT FUND*/
 
             segregated_map.put("RMFSDGP","0.56"); //NIPPON INDIA CREDIT RISK FUND
             segregated_map.put("RMFSDDP","0.56"); //NIPPON INDIA CREDIT RISK FUND
@@ -150,7 +153,7 @@ public class MfboxUtils
         }
         catch(Exception ex)
         {
-            ex.printStackTrace();
+            log.error("Failed to derive segregated scheme percentage", ex);
         }
         return segre_percent;
     }

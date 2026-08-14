@@ -2,12 +2,14 @@ package com.hexagonal.portfolio.domain.service;
 
 import java.util.Date;
 import java.util.HashMap;
-import java.util.concurrent.TimeUnit;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Tax-report domain rules carried over verbatim from the legacy {@code TrackerUtils}.
  * Only the members reachable from the investor tax-report use case are retained.
  */
+@Slf4j
 public class TrackerUtils
 {
 
@@ -34,17 +36,17 @@ public class TrackerUtils
             segregated_map.put("RMFSHQP","0.10"); //NIPPON INDIA EQUITY HYBRID FUND
             segregated_map.put("RMFSHDD","0.10"); //NIPPON INDIA EQUITY HYBRID FUND
 
-        	/*segregated_map.put("RMFMIGP","3.33"); //NIPPON INDIA HYBRID BOND FUND //ALPPR7506Q EF this pan nav not reduced in tax report
-        	segregated_map.put("RMFMIDP","3.33"); //NIPPON INDIA HYBRID BOND FUND
-        	segregated_map.put("RMFMIMP","3.33"); //NIPPON INDIA HYBRID BOND FUND
-        	segregated_map.put("RMFMIQP","3.33"); //NIPPON INDIA HYBRID BOND FUND
-        	segregated_map.put("RMFMIDD","3.33"); //NIPPON INDIA HYBRID BOND FUND*/
+            /*segregated_map.put("RMFMIGP","3.33"); //NIPPON INDIA HYBRID BOND FUND //ALPPR7506Q EF this pan nav not reduced in tax report
+            segregated_map.put("RMFMIDP","3.33"); //NIPPON INDIA HYBRID BOND FUND
+            segregated_map.put("RMFMIMP","3.33"); //NIPPON INDIA HYBRID BOND FUND
+            segregated_map.put("RMFMIQP","3.33"); //NIPPON INDIA HYBRID BOND FUND
+            segregated_map.put("RMFMIDD","3.33"); //NIPPON INDIA HYBRID BOND FUND*/
 
-        	/*segregated_map.put("RMFCBGP","0.37"); //NIPPON INDIA STRATEGIC DEBT FUND //AXQPS2410K EF this pan nav not reduced in tax report
-        	segregated_map.put("RMFCBDP","0.37"); //NIPPON INDIA STRATEGIC DEBT FUND
-        	segregated_map.put("RMFCBMP","0.37"); //NIPPON INDIA STRATEGIC DEBT FUND
-        	segregated_map.put("RMFCBQP","0.37"); //NIPPON INDIA STRATEGIC DEBT FUND
-        	segregated_map.put("RMFCBDD","0.37"); //NIPPON INDIA STRATEGIC DEBT FUND*/
+            /*segregated_map.put("RMFCBGP","0.37"); //NIPPON INDIA STRATEGIC DEBT FUND //AXQPS2410K EF this pan nav not reduced in tax report
+            segregated_map.put("RMFCBDP","0.37"); //NIPPON INDIA STRATEGIC DEBT FUND
+            segregated_map.put("RMFCBMP","0.37"); //NIPPON INDIA STRATEGIC DEBT FUND
+            segregated_map.put("RMFCBQP","0.37"); //NIPPON INDIA STRATEGIC DEBT FUND
+            segregated_map.put("RMFCBDD","0.37"); //NIPPON INDIA STRATEGIC DEBT FUND*/
 
             segregated_map.put("RMFSDGP","0.56"); //NIPPON INDIA CREDIT RISK FUND
             segregated_map.put("RMFSDDP","0.56"); //NIPPON INDIA CREDIT RISK FUND
@@ -131,7 +133,7 @@ public class TrackerUtils
         }
         catch(Exception ex)
         {
-            System.out.println("Exception Date & Time = " + new Date()); ex.printStackTrace();
+            log.error("Failed to derive segregated scheme percentage", ex);
         }
         return segre_percent;
     }

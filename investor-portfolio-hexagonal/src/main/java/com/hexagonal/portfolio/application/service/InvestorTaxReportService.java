@@ -1,20 +1,38 @@
 package com.hexagonal.portfolio.application.service;
 
 
-import com.hexagonal.portfolio.application.port.in.GetInvestorTaxReportUseCase;import com.hexagonal.portfolio.application.port.out.*;import com.hexagonal.portfolio.domain.model.*;import com.hexagonal.portfolio.domain.service.TrackerUtils;import com.hexagonal.portfolio.domain.service.TransactionDataUtils;
-import org.hibernate.internal.util.StringHelper;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
 import java.util.stream.IntStream;
 
+import org.hibernate.internal.util.StringHelper;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.hexagonal.portfolio.application.port.in.GetInvestorTaxReportUseCase;
+import com.hexagonal.portfolio.application.port.out.LoadCamsTaxTransactionPort;
+import com.hexagonal.portfolio.application.port.out.LoadInflationIndexPort;
+import com.hexagonal.portfolio.application.port.out.LoadKarvyTaxTransactionPort;
+import com.hexagonal.portfolio.application.port.out.LoadNavHistoryPort;
+import com.hexagonal.portfolio.application.port.out.LoadSchemeMasterPort;
+import com.hexagonal.portfolio.application.port.out.LoadTransactionTypePort;
+import com.hexagonal.portfolio.domain.model.InvestorSchemeWiseTransactionTaxReport;
+import com.hexagonal.portfolio.domain.model.InvestorTransactionCams;
+import com.hexagonal.portfolio.domain.model.InvestorTransactionKarvy;
+import com.hexagonal.portfolio.domain.model.TransactionType;
+import com.hexagonal.portfolio.domain.model.XirrResponse;
+import com.hexagonal.portfolio.domain.service.TrackerUtils;
+import com.hexagonal.portfolio.domain.service.TransactionDataUtils;
+
 @Service
-public class InvestorTaxReportService implements GetInvestorTaxReportUseCase {
+class InvestorTaxReportService implements GetInvestorTaxReportUseCase {
 
     private final LoadTransactionTypePort loadTransactionTypePort;
     private final LoadCamsTaxTransactionPort loadCamsTaxTransactionPort;
@@ -23,7 +41,6 @@ public class InvestorTaxReportService implements GetInvestorTaxReportUseCase {
     private final LoadNavHistoryPort loadNavHistoryPort;
     private final LoadInflationIndexPort loadInflationIndexPort;
 
-    @Autowired
     public InvestorTaxReportService(LoadTransactionTypePort loadTransactionTypePort,
                                     LoadCamsTaxTransactionPort loadCamsTaxTransactionPort,
                                     LoadKarvyTaxTransactionPort loadKarvyTaxTransactionPort,

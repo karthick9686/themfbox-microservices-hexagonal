@@ -1,0 +1,44 @@
+# PMD legacy baseline — the ratchet.
+#
+# Each line grandfathers ONE class against ONE named rule. A violation of any other rule in
+# these classes still fails the build, and a class not listed here must be clean from the start.
+#
+# Everything here is ported verbatim from investor-portfolio-service. The rules fall into three
+# groups, none of which can be fixed by a safe mechanical edit today:
+#
+#   Behaviour-bearing   UnusedAssignment, UnusedFormalParameter, UnusedLocalVariable,
+#                       AvoidReassigningParameters, AssignmentInOperand
+#                       Touching these means editing valuation arithmetic that is not yet under
+#                       test. The review is explicit: no changes to InvestorPortfolioService or
+#                       InvestorTaxReportService before coverage exists.
+#
+#   Output-affecting    SimpleDateFormatNeedsLocale, UseLocaleWithCaseConversions
+#                       Adding an explicit Locale changes formatting and case-folding for some
+#                       inputs, which moves the emitted figures. Must be done deliberately and
+#                       diffed, not swept in with a lint fix.
+#
+#   Layout              OneDeclarationPerLine, ForLoopCanBeForeach, UseCollectionIsEmpty
+#                       Re-flows ported lines and erodes the legacy diff.
+#
+# Two genuine concurrency findings are listed and should be fixed FIRST — they are real bugs
+# waiting to happen, not style:
+#   FamilyMfPortfolioService / MobilePortfolioMapper = UnsynchronizedStaticFormatter
+#   A static SimpleDateFormat is not thread-safe; under concurrent requests it can silently
+#   produce a corrupted or wrong date string. Fix by making the formatter a local, or by
+#   switching to DateTimeFormatter.
+#
+# TO BURN DOWN: delete a line, run `mvn pmd:check`, fix what it reports. Shorter is better.
+# Do not add a line to make a new change pass.
+
+com.hexagonal.portfolio.HexagonalPortfolioApplication=CloseResource
+com.hexagonal.portfolio.adapter.out.persistence.TransactionTypeConfigAdapter=UnusedAssignment
+com.hexagonal.portfolio.domain.model.InvestorSchemeWisePortfolioResponse=CloneMethodReturnTypeMustMatchClassName
+com.hexagonal.portfolio.domain.service.MyMFBoxUtils=AvoidReassigningParameters
+com.hexagonal.portfolio.domain.service.TransactionDataUtils=UnusedLocalVariable
+com.hexagonal.portfolio.domain.service.XIRR=AssignmentInOperand,AvoidReassigningParameters,UnusedAssignment
+com.hexagonal.portfolio.application.service.CapitalGainReportMapper=OneDeclarationPerLine,UseLocaleWithCaseConversions
+com.hexagonal.portfolio.application.service.FamilyMfPortfolioService=OneDeclarationPerLine,SimpleDateFormatNeedsLocale,UnsynchronizedStaticFormatter
+com.hexagonal.portfolio.application.service.FolioMasterSummaryService=SimpleDateFormatNeedsLocale
+com.hexagonal.portfolio.application.service.MobilePortfolioMapper=SimpleDateFormatNeedsLocale,UnsynchronizedStaticFormatter
+com.hexagonal.portfolio.application.service.InvestorPortfolioService=AvoidReassigningParameters,ForLoopCanBeForeach,OneDeclarationPerLine,SimpleDateFormatNeedsLocale,UnusedAssignment,UnusedFormalParameter,UseCollectionIsEmpty,UseLocaleWithCaseConversions
+com.hexagonal.portfolio.application.service.InvestorTaxReportService=ForLoopCanBeForeach,SimpleDateFormatNeedsLocale,UnusedAssignment,UnusedFormalParameter,UnusedLocalVariable,UseCollectionIsEmpty

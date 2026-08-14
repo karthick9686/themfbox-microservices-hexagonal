@@ -1,0 +1,4 @@
+# Runs before any bean is created, so a missing credential is reported as a configuration
+# error rather than as a MySQL "Access denied" several seconds into startup.
+org.springframework.boot.env.EnvironmentPostProcessor=\
+com.hexagonal.portfolio.config.RequiredEnvironmentValidator

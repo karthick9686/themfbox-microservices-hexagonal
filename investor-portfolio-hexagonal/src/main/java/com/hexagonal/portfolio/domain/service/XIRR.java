@@ -1,7 +1,6 @@
 package com.hexagonal.portfolio.domain.service;
 
 
-import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
@@ -133,7 +132,6 @@ public class XIRR
         if(payments.length == 2)
         {
             Double value = payments[0] + payments[1];
-            //System.out.println("payments[0]-->"+payments[0]+"--payments[1]-->"+payments[1]+"--value-->"+value);
             if(value.intValue() == 0) {
                 return 0;
             }
@@ -192,65 +190,5 @@ public class XIRR
         long diffInMillies = Math.abs(date2.getTime() - date1.getTime());
         return timeUnit.convert(diffInMillies, TimeUnit.MILLISECONDS);
     }
-
-    public static final void main(String[] args) throws Exception
-    {
-        double[] payments = new double[7]; // payments
-        double[] days = new double[7];                // days of payment (as day of year)
-
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(0);
-
-        Calendar cal = Calendar.getInstance();
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-
-        Date startDate = sdf.parse("2020-02-12");
-        cal.setTime(startDate);
-        payments[0] = -2500000;
-        days[0] = (double)getDateDiff(cal, calendar);
-
-        startDate = sdf.parse("2021-12-30");
-        cal.setTime(startDate);
-        payments[1] = -100000;
-        days[1] = (double)getDateDiff(cal, calendar);
-
-        startDate = sdf.parse("2022-01-06");
-        cal.setTime(startDate);
-        payments[2] = -1400000;
-        days[2] = (double)getDateDiff(cal, calendar);
-
-        startDate = sdf.parse("2022-01-06");
-        cal.setTime(startDate);
-        payments[3] = -500000;
-        days[3] = (double)getDateDiff(cal, calendar);
-
-        startDate = sdf.parse("2022-07-03");
-        cal.setTime(startDate);
-        payments[4] = -1000000;
-        days[4] = (double)getDateDiff(cal, calendar);
-
-        startDate = sdf.parse("2022-10-10");
-        cal.setTime(startDate);
-        payments[5] = -1000000;
-        days[5] = (double)getDateDiff(cal, calendar);
-
-        startDate = sdf.parse("2023-02-27");
-        cal.setTime(startDate);
-        payments[6] = 9090900;
-        days[6] = (double)getDateDiff(cal, calendar);
-
-		/*for (int k=0;k<payments.length;k++) {
-
-		}
-		for (int k=0;k<days.length;k++) {
-
-		}*/
-
-        double xirr = Newtons_method(payments, days, 0.1);
-        double xirr1 = Bisection_method(payments, days, 0.1);
-        //System.out.println("xirr-->"+xirr);
-        //System.out.println("xirr-->"+xirr);
-    }
-
 
 }

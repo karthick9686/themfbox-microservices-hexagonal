@@ -31,3 +31,10 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Secrets ###
+# Local credential files. .env.example is the committed template and holds no real values.
+.env
+.env.local
+*.env
+!.env.example

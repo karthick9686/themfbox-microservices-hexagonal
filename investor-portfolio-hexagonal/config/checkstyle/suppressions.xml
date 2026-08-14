@@ -1,0 +1,68 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+        "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
+        "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+
+<!--
+  Targeted suppressions only.
+
+  This file is deliberately short. The blanket exceptions this codebase needs — snake_case
+  naming and the ported layout — are handled by leaving those checks out of checkstyle.xml
+  entirely, with the reasoning recorded there. Suppressing them per-file instead would produce
+  an unmaintainable list that hides genuine new violations inside it.
+
+  Anything added here needs a comment saying why the rule cannot simply be satisfied.
+-->
+<suppressions>
+
+    <!-- Generated sources are not hand-written and cannot be edited to satisfy a rule. -->
+    <suppress files="[/\\]target[/\\]" checks=".*"/>
+    <suppress files="[/\\]generated-sources[/\\]" checks=".*"/>
+
+    <!--
+      ============================ LEGACY RATCHET ============================
+
+      The files below are ported verbatim from investor-portfolio-service and are grandfathered
+      for the checks listed against them. Every entry is scoped to one file AND one check, so a
+      NEW violation of any other rule in these files still fails, and a new file anywhere in the
+      project must satisfy every rule from the outset.
+
+      Why these three checks cannot simply be fixed in place:
+
+        EqualsAvoidNull (199 occurrences)
+            Rewriting x.equalsIgnoreCase("literal") as "literal".equalsIgnoreCase(x) changes
+            behaviour: the first throws on a null receiver, the second returns false. In ported
+            valuation code that difference could turn a crash into a silently wrong figure. Not
+            a safe mechanical edit — each site needs to be reasoned about against the legacy
+            source, so it waits for the response-diff.
+
+        NeedBraces / OneStatementPerLine / MultipleVariableDeclarations
+            Pure layout in ported files. Fixing them re-flows lines and erodes the line-for-line
+            diff against the legacy service that the fidelity claim rests on.
+
+      TO BURN THIS DOWN: delete an entry, run `mvn checkstyle:check`, fix what it reports. The
+      list should only ever get shorter. Do not add a file here to make a new change pass.
+    -->
+
+    <suppress files="InvestorPortfolioService\.java"
+              checks="EqualsAvoidNull|NeedBraces|MultipleVariableDeclarations"/>
+    <suppress files="InvestorTaxReportService\.java"
+              checks="EqualsAvoidNull|NeedBraces"/>
+    <suppress files="CapitalGainReportMapper\.java"
+              checks="NeedBraces|OneStatementPerLine|MultipleVariableDeclarations"/>
+    <suppress files="FamilyMfPortfolioService\.java"
+              checks="MultipleVariableDeclarations"/>
+    <suppress files="MobilePortfolioMapper\.java"
+              checks="NeedBraces"/>
+    <suppress files="MyMFBoxUtils\.java"
+              checks="NeedBraces"/>
+    <suppress files="TransactionDataUtils\.java"
+              checks="EqualsAvoidNull"/>
+    <suppress files="TransactionTypeConfigAdapter\.java"
+              checks="EqualsAvoidNull"/>
+    <suppress files="InvestorPortfolioController\.java"
+              checks="EqualsAvoidNull"/>
+    <suppress files="HexagonalPortfolioApplication\.java"
+              checks="EqualsAvoidNull"/>
+
+</suppressions>

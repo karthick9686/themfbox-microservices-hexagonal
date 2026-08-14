@@ -1,17 +1,20 @@
 package com.hexagonal.portfolio.adapter.in.web;
 
-import com.hexagonal.portfolio.application.port.in.ConvertToCapitalGainReportUseCase;
-import com.hexagonal.portfolio.application.port.in.ConvertToMobilePortfolioUseCase;
-import com.hexagonal.portfolio.application.port.in.GetFamilyMfPortfolioUseCase;
-import com.hexagonal.portfolio.application.port.in.GetFolioMasterSummaryUseCase;
-import com.hexagonal.portfolio.application.port.in.GetInvestorPortfolioUseCase;
-import com.hexagonal.portfolio.application.port.in.GetInvestorTaxReportUseCase;
-import com.hexagonal.portfolio.domain.model.CapitalGainReportApiResponse;
-import com.hexagonal.portfolio.domain.model.FamilyMfPortfolioResponse;
-import com.hexagonal.portfolio.domain.model.FolioMasterSummaryResponse;
-import com.hexagonal.portfolio.domain.model.InvestorPortfolioNewMobileResponse;
-import com.hexagonal.portfolio.domain.model.InvestorPortfolioResponse;
-import com.hexagonal.portfolio.domain.model.InvestorSchemeWiseTransactionTaxReport;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -28,19 +31,18 @@ import org.mockito.quality.Strictness;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.util.List;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.hexagonal.portfolio.application.port.in.ConvertToCapitalGainReportUseCase;
+import com.hexagonal.portfolio.application.port.in.ConvertToMobilePortfolioUseCase;
+import com.hexagonal.portfolio.application.port.in.GetFamilyMfPortfolioUseCase;
+import com.hexagonal.portfolio.application.port.in.GetFolioMasterSummaryUseCase;
+import com.hexagonal.portfolio.application.port.in.GetInvestorPortfolioUseCase;
+import com.hexagonal.portfolio.application.port.in.GetInvestorTaxReportUseCase;
+import com.hexagonal.portfolio.domain.model.CapitalGainReportApiResponse;
+import com.hexagonal.portfolio.domain.model.FamilyMfPortfolioResponse;
+import com.hexagonal.portfolio.domain.model.FolioMasterSummaryResponse;
+import com.hexagonal.portfolio.domain.model.InvestorPortfolioNewMobileResponse;
+import com.hexagonal.portfolio.domain.model.InvestorPortfolioResponse;
+import com.hexagonal.portfolio.domain.model.InvestorSchemeWiseTransactionTaxReport;
 
 /**
  * Adapter tests for {@link InvestorPortfolioController}.
@@ -85,7 +87,9 @@ class InvestorPortfolioControllerTest {
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+        mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
     }
 
     // =====================================================================
@@ -384,46 +388,54 @@ class InvestorPortfolioControllerTest {
     }
 
     // =====================================================================
-    // Failure handling — the endpoint swallows everything into a 400
+    // Failure handling — bad input is a 400, a server fault is a 500
     // =====================================================================
 
+    /**
+     * The endpoint used to answer every failure with an empty-bodied 400, so a null dereference in
+     * the valuation was indistinguishable from a mistyped investor id. These tests pin the split
+     * that {@link GlobalExceptionHandler} restores: the caller's fault is a 4xx, ours is a 5xx.
+     */
     @Nested
     @DisplayName("failure handling")
     class Failures {
 
         @Test
-        @DisplayName("a missing userId yields 400, because parsing \"\" throws")
+        @DisplayName("a missing userId yields 400 with the invalid-parameter code")
         void missingUserIdIsBadRequest() throws Exception {
             mockMvc.perform(get(URL).param("clientName", "acme"))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("PORTFOLIO-4001"));
 
             verifyNoInteractions(getInvestorPortfolioUseCase);
         }
 
         @ParameterizedTest(name = "userId=\"{0}\" yields 400")
         @ValueSource(strings = {"abc", "4.2", "null", "undefined", ""})
-        @DisplayName("a non-numeric userId yields 400")
+        @DisplayName("a non-numeric userId yields 400 without reaching the use case")
         void nonNumericUserIdIsBadRequest(String userId) throws Exception {
             mockMvc.perform(get(URL).param("userId", userId).param("clientName", "acme"))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("PORTFOLIO-4001"));
 
             verifyNoInteractions(getInvestorPortfolioUseCase);
         }
 
         @Test
-        @DisplayName("an exception from the use case is translated into 400, not a 500")
-        void useCaseFailureIsBadRequest() throws Exception {
+        @DisplayName("an exception from the use case is a 500, no longer disguised as a 400")
+        void useCaseFailureIsInternalServerError() throws Exception {
             when(getInvestorPortfolioUseCase.getInvestorPortfolioNew(
                     anyInt(), anyString(), anyString(), anyString(), anyString(), anyString()))
                     .thenThrow(new RuntimeException("valuation blew up"));
 
             mockMvc.perform(get(URL).param("userId", "42").param("clientName", "acme"))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isInternalServerError())
+                    .andExpect(jsonPath("$.code").value("PORTFOLIO-5000"));
         }
 
         @Test
-        @DisplayName("a failure inside the family branch is also a 400")
-        void familyFailureIsBadRequest() throws Exception {
+        @DisplayName("a failure inside the family branch is also a 500")
+        void familyFailureIsInternalServerError() throws Exception {
             when(getFamilyMfPortfolioUseCase.getFamilyPortfolio(
                     anyInt(), anyString(), anyString(), anyString(), anyString(), anyString()))
                     .thenThrow(new IllegalStateException("no family mapping"));
@@ -432,7 +444,25 @@ class InvestorPortfolioControllerTest {
                             .param("userId", "42")
                             .param("clientName", "acme")
                             .param("report_type", "family"))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isInternalServerError())
+                    .andExpect(jsonPath("$.code").value("PORTFOLIO-5000"));
+        }
+
+        @Test
+        @DisplayName("the 500 body carries no stack trace, exception class or internal message")
+        void internalErrorLeaksNothing() throws Exception {
+            when(getInvestorPortfolioUseCase.getInvestorPortfolioNew(
+                    anyInt(), anyString(), anyString(), anyString(), anyString(), anyString()))
+                    .thenThrow(new IllegalStateException("connection pool exhausted at 10.0.0.7"));
+
+            String body = mockMvc.perform(get(URL).param("userId", "42").param("clientName", "acme"))
+                    .andExpect(status().isInternalServerError())
+                    .andReturn().getResponse().getContentAsString();
+
+            assertThat(body)
+                    .doesNotContain("connection pool exhausted")
+                    .doesNotContain("IllegalStateException")
+                    .doesNotContain("com.hexagonal");
         }
     }
 

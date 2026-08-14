@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+<ruleset name="investor-portfolio-hexagonal"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0
+                             https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+
+    <description>
+        Curated PMD rules. Same principle as the Checkstyle config: keep the rules that describe
+        a way the code can be wrong, drop the ones that would only describe the ported style.
+
+        The size and complexity rules are excluded rather than tuned. InvestorPortfolioService is
+        a single 3,400-line method carried over verbatim, and every threshold-based rule fires on
+        it hundreds of times. That is one known problem, already recorded in the standards review;
+        restating it as hundreds of findings would bury everything else. Re-enable them once that
+        class has been decomposed — which the review says must wait for test coverage.
+    </description>
+
+    <rule ref="category/java/errorprone.xml">
+        <!-- The ported code compares boxed numerics and uses == on Doubles in places; that is
+             behaviour-bearing and cannot be changed without moving the emitted figures. -->
+        <exclude name="CompareObjectsWithEquals"/>
+        <!-- Fires on every DecimalFormat and literal in the valuation arithmetic. -->
+        <exclude name="AvoidLiteralsInIfCondition"/>
+        <!-- Lombok @Data on payload classes trips this by design. -->
+        <exclude name="AvoidFieldNameMatchingMethodName"/>
+        <!-- Null checks are pervasive in the ported code and intentional. -->
+        <exclude name="NullAssignment"/>
+        <exclude name="AvoidDuplicateLiterals"/>
+        <exclude name="MissingSerialVersionUID"/>
+    </rule>
+
+    <rule ref="category/java/multithreading.xml">
+        <!-- SimpleDateFormat statics exist in the ported mappers; flagged in the review notes
+             rather than silently rewritten, since changing them alters formatting behaviour. -->
+        <exclude name="UseConcurrentHashMap"/>
+    </rule>
+
+    <rule ref="category/java/bestpractices.xml">
+        <exclude name="GuardLogStatement"/>
+        <exclude name="JUnitTestsShouldIncludeAssert"/>
+        <exclude name="UnitTestShouldIncludeAssert"/>
+        <exclude name="AbstractClassWithoutAbstractMethod"/>
+        <!-- Deliberate: the ported code uses long parameter lists that mirror the legacy API. -->
+        <exclude name="UseVarargs"/>
+        <exclude name="LooseCoupling"/>
+        <exclude name="LiteralsFirstInComparisons"/>
+        <exclude name="ForLoopVariableCount"/>
+    </rule>
+
+    <rule ref="category/java/security.xml"/>
+
+</ruleset>

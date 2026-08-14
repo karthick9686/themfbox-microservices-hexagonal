@@ -1,7 +1,5 @@
 package com.hexagonal.portfolio.domain.service;
 
-import org.hibernate.internal.util.StringHelper;
-
 import java.util.Locale;
 import java.util.Map;
 
@@ -46,10 +44,11 @@ public class MyMFBoxUtils
     public static String getLogoByAmcNameOrSchemeName(String amc_or_scheme_name)
     {
         amc_or_scheme_name = checkParem(amc_or_scheme_name);
-        if (StringHelper.isEmpty(amc_or_scheme_name)) return "empty.png";
+        // Was org.hibernate.internal.util.StringHelper.isEmpty, which is exactly this test.
+        // Inlined to keep the domain free of ORM types; see HexagonalArchitectureTest.
+        if (amc_or_scheme_name == null || amc_or_scheme_name.isEmpty()) return "empty.png";
 
         String firstWord = amc_or_scheme_name.trim().split("\\s+")[0].toLowerCase(Locale.ROOT);
-        // Moved LOGO_MAP inside the method, as per your request to keep single method only
         Map<String, String> LOGO_MAP = Map.ofEntries(
                 Map.entry("axis", "axis.png"),
                 Map.entry("bandhan", "bandhan.png"),

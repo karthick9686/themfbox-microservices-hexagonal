@@ -1,15 +1,23 @@
 package com.hexagonal.portfolio.application.service;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.stereotype.Service;
+
 import com.hexagonal.portfolio.application.port.in.ConvertToMobilePortfolioUseCase;
 import com.hexagonal.portfolio.domain.model.InvestorPortfolioNewMobileResponse;
-import com.hexagonal.portfolio.domain.model.InvestorPortfolioNewMobileResponse.*;
+import com.hexagonal.portfolio.domain.model.InvestorPortfolioNewMobileResponse.BroadCategoryDto;
+import com.hexagonal.portfolio.domain.model.InvestorPortfolioNewMobileResponse.CategoryDto;
+import com.hexagonal.portfolio.domain.model.InvestorPortfolioNewMobileResponse.SchemeDto;
 import com.hexagonal.portfolio.domain.model.InvestorPortfolioResponse;
 import com.hexagonal.portfolio.domain.model.InvestorSchemeWisePortfolioResponse;
 import com.hexagonal.portfolio.domain.service.MyMFBoxUtils;
 
-import org.springframework.stereotype.Service;
-
-import java.text.SimpleDateFormat;
-import java.util.*;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Maps the raw InvestorPortfolioResponse into the mobile-specific
@@ -17,8 +25,9 @@ import java.util.*;
  *
  * Structure: portfolio summary + list(broad_category → category_list → scheme_list).
  */
+@Slf4j
 @Service
-public class MobilePortfolioMapper implements ConvertToMobilePortfolioUseCase {
+class MobilePortfolioMapper implements ConvertToMobilePortfolioUseCase {
 
     private static final SimpleDateFormat DATE_FORMAT_OUT = new SimpleDateFormat("dd-MM-yyyy");
 
@@ -151,7 +160,7 @@ public class MobilePortfolioMapper implements ConvertToMobilePortfolioUseCase {
 
     private SchemeDto buildSchemeDto(InvestorSchemeWisePortfolioResponse s, double total) {
         SchemeDto dto = new SchemeDto();
-        System.out.println("hello" + s.getScheme());
+        log.debug("Mapping scheme {} into the mobile payload", s.getScheme());
         dto.setSchemeAmfi(s.getScheme());
         dto.setSchemeAmfiShortName(s.getScheme_amfi_short_name());
         dto.setLogo(resolveLogo(s));

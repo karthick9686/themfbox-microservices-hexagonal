@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Cancel a superseded run rather than paying for both.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MODULE_DIR: investor-portfolio-hexagonal
+
+jobs:
+  build:
+    name: Build and quality gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+          cache: maven
+
+      # Runs the whole gate set: Surefire, ArchUnit, Checkstyle, PMD, SpotBugs,
+      # Spotless and JaCoCo. No database is needed — every test is a unit test, and
+      # the credential check only runs when the Spring context starts.
+      - name: Build, test and verify
+        working-directory: ${{ env.MODULE_DIR }}
+        run: mvn --batch-mode --no-transfer-progress clean verify
+
+      - name: Publish test results
+        uses: mikepenz/action-junit-report@v4
+        if: always()
+        with:
+          report_paths: ${{ env.MODULE_DIR }}/target/surefire-reports/TEST-*.xml
+          fail_on_failure: true
+          detailed_summary: true
+
+      # Coverage is a ratchet (see ADR-0005). Surfacing the number each run is what
+      # makes the ratchet visible enough to actually get tightened.
+      - name: Coverage summary
+        if: always()
+        working-directory: ${{ env.MODULE_DIR }}
+        run: |
+          CSV=target/site/jacoco/jacoco.csv
+          [ -f "$CSV" ] || { echo "No coverage report."; exit 0; }
+          awk -F, 'NR>1 {m+=$4; c+=$5} END {
+            printf "## Coverage\n\n**%.1f%%** instructions (%d of %d)\n\n", 100*c/(m+c), c, m+c
+          }' "$CSV" >> "$GITHUB_STEP_SUMMARY"
+          awk -F, 'NR>1 && $2 ~ /application|domain/ {k=$2; miss[k]+=$4; cov[k]+=$5}
+            END {
+              print "| Package | Coverage |"; print "|---|---|";
+              for (p in miss) printf "| %s | %.1f%% |\n", p, 100*cov[p]/(miss[p]+cov[p])
+            }' "$CSV" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reports
+          path: |
+            ${{ env.MODULE_DIR }}/target/site/jacoco/
+            ${{ env.MODULE_DIR }}/target/checkstyle-result.xml
+            ${{ env.MODULE_DIR }}/target/pmd.xml
+            ${{ env.MODULE_DIR }}/target/spotbugsXml.xml
+          retention-days: 14
+          if-no-files-found: ignore
+
+  # This repository has already published live database credentials once. The scan
+  # covers the full history, not just the diff, so the existing exposure keeps
+  # showing up until it is actually rotated and rewritten — see ADR-0006.
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  docker:
+    name: Docker image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: build
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Built on every run so a broken Dockerfile is caught here rather than at
+      # deploy time. Not pushed — wire up a registry when there is somewhere to
+      # deploy to.
+      - name: Build image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ env.MODULE_DIR }}
+          push: false
+          load: true
+          tags: investor-portfolio-hexagonal:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify the image starts and reports missing configuration
+        run: |
+          set -e
+          OUT=$(docker run --rm investor-portfolio-hexagonal:${{ github.sha }} 2>&1 || true)
+          echo "$OUT" | grep -q "Missing required configuration" \
+            || { echo "Expected the startup credential check to fire."; echo "$OUT" | tail -30; exit 1; }
+          echo "Startup validation behaves as expected."

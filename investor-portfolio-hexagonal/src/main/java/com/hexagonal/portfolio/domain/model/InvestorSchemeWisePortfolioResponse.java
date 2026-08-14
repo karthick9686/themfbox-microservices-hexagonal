@@ -1,12 +1,11 @@
 package com.hexagonal.portfolio.domain.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.hexagonal.portfolio.domain.model.FolioMaster;
-import com.hexagonal.portfolio.domain.model.InvestorTransaction;
-import lombok.Data;
-
 import java.util.Date;
 import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import lombok.Data;
 
 @Data
 public class InvestorSchemeWisePortfolioResponse  implements Cloneable

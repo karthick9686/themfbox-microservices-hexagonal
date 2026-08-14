@@ -1,9 +1,9 @@
 package com.hexagonal.portfolio.domain.model;
 
 
-import lombok.Data;
-
 import java.util.Date;
+
+import lombok.Data;
 @Data
 public class InvestorMasterCams {
     private Integer id;

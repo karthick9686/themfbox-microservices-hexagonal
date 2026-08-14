@@ -1,12 +1,17 @@
 package com.hexagonal.portfolio.application.service;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.stereotype.Service;
+
 import com.hexagonal.portfolio.application.port.in.ConvertToCapitalGainReportUseCase;
 import com.hexagonal.portfolio.domain.model.CapitalGainReportApiResponse;
 import com.hexagonal.portfolio.domain.model.CapitalGainReportApiResponse.CapitalGainTransactionDto;
 import com.hexagonal.portfolio.domain.model.CapitalGainReportApiResponse.SchemeCapitalGainDto;
 import com.hexagonal.portfolio.domain.model.InvestorSchemeWiseTransactionTaxReport;
-import org.springframework.stereotype.Service;
-
-import java.util.*;
 
 /**
  * FIXES applied vs previous version:
@@ -35,7 +40,7 @@ import java.util.*;
  *    based on which gain type is non-zero.
  */
 @Service
-public class CapitalGainReportMapper implements ConvertToCapitalGainReportUseCase {
+class CapitalGainReportMapper implements ConvertToCapitalGainReportUseCase {
 
     private static final String LOGO_BASE = "https://api.advisorkhoj.com/nse/images/amc-logo/";
 

@@ -1,10 +1,9 @@
 package com.hexagonal.portfolio.domain.model;
 
 
-import com.hexagonal.portfolio.domain.model.InvestorSipCams49;
-import lombok.Data;
-
 import java.util.List;
+
+import lombok.Data;
 
 @Data
 public class InvestorPortfolioResponse

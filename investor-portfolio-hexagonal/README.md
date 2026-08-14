@@ -11,8 +11,12 @@ valuation logic was carried over line-for-line; only the *direction of dependenc
 Both services read the same tables, so their responses are equivalent.
 
 Under the `dev` profile it runs on port **8099** while the legacy service uses **8098**, so the
-two can run side by side for response diffing. Note that both currently declare **8080** under
-`prod` — see *Known issues* below.
+two can run side by side for response diffing. Prod defaults to **8090** (`${SERVER_PORT:8090}`),
+which clears the earlier collision with the legacy service's 8080.
+
+Further documentation: [ARCHITECTURE.md](ARCHITECTURE.md) ·
+[CODING-GUIDELINES.md](CODING-GUIDELINES.md) · [CONTRIBUTING.md](CONTRIBUTING.md) ·
+[ADRs](docs/adr/)
 
 ## Layers
 
@@ -98,25 +102,51 @@ are the entities minus persistence annotations), so the `BeanUtils` copy in
 
 ## Build and run
 
+Credentials are not in the repository. Supply them first — the application refuses to start
+without them:
+
 ```bash
-mvn clean compile
-mvn spring-boot:run
+cp .env.example .env      # then fill in the four DB_* values
+mvn spring-boot:run       # dev profile, port 8099
 ```
 
-Datasource credentials are inherited from `application-prod.properties`, pointing at the same
-`mfportfolio` and `advisorkhoj_amfi` schemas the legacy service uses.
+```bash
+mvn clean verify          # tests + ArchUnit, Checkstyle, PMD, SpotBugs, Spotless, JaCoCo
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the quality gates and the ratcheted baselines.
 
 ## Known issues
 
-- **Both this service and `investor-portfolio-service` declare `server.port=8080` under the
-  `prod` profile.** Whichever starts second fails to bind. The `dev` profiles are already
-  separated (8099 vs 8098); prod needs the same treatment before deployment.
-- **Datasource credentials and `jwt.secret-key` are committed in plaintext** in
-  `application-prod.properties`, carried over from the legacy service's configuration. They
-  belong in environment variables or a secrets store.
-- Debug output (`System.out.println`) and `printStackTrace` calls were carried over verbatim
-  from the legacy code rather than replaced with a logger, to keep the diff-based fidelity
-  check meaningful. They are stdout-only and do not affect any response.
+- **The committed credentials are still readable in this repository's public git history.**
+  They have been removed from the working tree, but that does not unpublish them. Both database
+  users and the JWT key must be rotated, and the history rewritten. See
+  [ADR-0006](docs/adr/0006-externalised-secrets.md).
+- **`InvestorPortfolioService` (3,400 lines) and `InvestorTaxReportService` are effectively
+  untested** — 0.1% instruction coverage between them, and 82% of everything still uncovered.
+  This is why the JaCoCo bundle gate sits at 20% rather than the 80% target.
+- **`FamilyMfPortfolioService` and `MobilePortfolioMapper` hold a static `SimpleDateFormat`**,
+  which is not thread-safe; under concurrent requests it can emit a corrupted date. Found by PMD,
+  not yet fixed.
+- **`TransactionDataUtils` never cancels a SIP Rejection.** The branch tests the rejection's own
+  transaction type against the systematic-purchase literals, so the condition can never be true.
+  Pinned as-is by `TransactionDataUtilsTest`; fixing it changes emitted figures.
+- Both XIRR solvers return `0` when they fail to converge, which is indistinguishable from a
+  genuine 0% return.
+
+## Changes from the original port
+
+The valuation and tax bodies are still byte-identical to the legacy source. These changed:
+
+- Field `@Autowired` replaced with constructor injection; service implementations are now
+  package-private
+- `System.out.println` / `printStackTrace` replaced with SLF4J
+- Error responses are RFC 7807 `ProblemDetail` and **deliberately differ** from the legacy
+  service ([ADR-0004](docs/adr/0004-error-responses-diverge.md)) — success payloads do not
+- Request parameters carry Bean Validation constraints
+- Credentials externalised; dead config removed
+  ([ADR-0006](docs/adr/0006-externalised-secrets.md))
+- Quality gates and 237 tests added
 
 ## Not yet done
 

@@ -1,20 +1,30 @@
 package com.hexagonal.portfolio.application.service;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.stereotype.Service;
+
 import com.hexagonal.portfolio.application.port.in.GetFamilyMfPortfolioUseCase;
 import com.hexagonal.portfolio.application.port.in.GetInvestorPortfolioUseCase;
 import com.hexagonal.portfolio.application.port.out.LoadFamilyMappingPort;
 import com.hexagonal.portfolio.domain.model.FamilyMfPortfolioResponse;
-import com.hexagonal.portfolio.domain.model.FamilyMfPortfolioResponse.*;
+import com.hexagonal.portfolio.domain.model.FamilyMfPortfolioResponse.MemberMfSummary;
+import com.hexagonal.portfolio.domain.model.FamilyMfPortfolioResponse.MemberSipSummary;
+import com.hexagonal.portfolio.domain.model.FamilyMfPortfolioResponse.MfSchemeDto;
+import com.hexagonal.portfolio.domain.model.FamilyMfPortfolioResponse.MfSummary;
+import com.hexagonal.portfolio.domain.model.FamilyMfPortfolioResponse.SipSchemeDto;
+import com.hexagonal.portfolio.domain.model.FamilyMfPortfolioResponse.SipSummary;
 import com.hexagonal.portfolio.domain.model.InvestorPortfolioResponse;
 import com.hexagonal.portfolio.domain.model.InvestorSchemeWisePortfolioResponse;
 import com.hexagonal.portfolio.domain.model.UsersMapping;
 import com.hexagonal.portfolio.domain.model.XirrResponse;
 import com.hexagonal.portfolio.domain.service.XIRR;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
-import java.text.SimpleDateFormat;
-import java.util.*;
 
 /**
  * Builds the family-grouped response for /getInvestorPortfolioNew?source=family.
@@ -30,13 +40,16 @@ import java.util.*;
  * the shared {@link XIRR} solver — identical to how a single investor's XIRR is derived.
  */
 @Service
-public class FamilyMfPortfolioService implements GetFamilyMfPortfolioUseCase {
+class FamilyMfPortfolioService implements GetFamilyMfPortfolioUseCase {
 
-    @Autowired
-    private LoadFamilyMappingPort loadFamilyMappingPort;
+    private final LoadFamilyMappingPort loadFamilyMappingPort;
+    private final GetInvestorPortfolioUseCase getInvestorPortfolioUseCase;
 
-    @Autowired
-    private GetInvestorPortfolioUseCase getInvestorPortfolioUseCase;
+    public FamilyMfPortfolioService(LoadFamilyMappingPort loadFamilyMappingPort,
+                                    GetInvestorPortfolioUseCase getInvestorPortfolioUseCase) {
+        this.loadFamilyMappingPort = loadFamilyMappingPort;
+        this.getInvestorPortfolioUseCase = getInvestorPortfolioUseCase;
+    }
 
     private static final SimpleDateFormat DATE_FORMAT_OUT = new SimpleDateFormat("dd-MM-yyyy");
     private static final String LOGO_BASE = "https://api.advisorkhoj.com/nse/images/amc-logo/";

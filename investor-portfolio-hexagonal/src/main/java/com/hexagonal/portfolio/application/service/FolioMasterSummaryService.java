@@ -1,4 +1,13 @@
 package com.hexagonal.portfolio.application.service;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
 import com.hexagonal.portfolio.application.port.in.GetFolioMasterSummaryUseCase;
 import com.hexagonal.portfolio.application.port.out.LoadCamsFolioMasterPort;
 import com.hexagonal.portfolio.application.port.out.LoadKarvyFolioMasterPort;
@@ -11,28 +20,23 @@ import com.hexagonal.portfolio.domain.model.InvestorPortfolioResponse;
 import com.hexagonal.portfolio.domain.model.InvestorSchemeWisePortfolioResponse;
 import com.hexagonal.portfolio.domain.service.MyMFBoxUtils;
 
+import lombok.extern.slf4j.Slf4j;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.stream.Collectors;
-
+@Slf4j
 @Service
-public class FolioMasterSummaryService implements GetFolioMasterSummaryUseCase {
+class FolioMasterSummaryService implements GetFolioMasterSummaryUseCase {
 
-    @Autowired
-    private LoadCamsFolioMasterPort loadCamsFolioMasterPort;
+    private final LoadCamsFolioMasterPort loadCamsFolioMasterPort;
+    private final LoadKarvyFolioMasterPort loadKarvyFolioMasterPort;
+    private final String amcLogoPath;
 
-    @Autowired
-    private LoadKarvyFolioMasterPort loadKarvyFolioMasterPort;
-
-    @Value("${amc.logo.url}")
-    private String amcLogoPath;
+    public FolioMasterSummaryService(LoadCamsFolioMasterPort loadCamsFolioMasterPort,
+                                     LoadKarvyFolioMasterPort loadKarvyFolioMasterPort,
+                                     @Value("${amc.logo.url}") String amcLogoPath) {
+        this.loadCamsFolioMasterPort = loadCamsFolioMasterPort;
+        this.loadKarvyFolioMasterPort = loadKarvyFolioMasterPort;
+        this.amcLogoPath = amcLogoPath;
+    }
 
     public List<FolioMasterResponse> getSchemeMaster(Integer userId, String clientName) {
 
@@ -185,8 +189,7 @@ public class FolioMasterSummaryService implements GetFolioMasterSummaryUseCase {
             }
 
         } catch (Exception ex) {
-            System.out.println("Exception Date & Time = " + new Date());
-            ex.printStackTrace();
+            log.error("Failed to load folio master data for userId={}, clientName={}", userId, clientName, ex);
             throw new RuntimeException(
                     "Failed to getSchemeMaster --> " + ex.getMessage(),
                     ex

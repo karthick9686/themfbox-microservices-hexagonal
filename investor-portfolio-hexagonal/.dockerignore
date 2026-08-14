@@ -1,0 +1,17 @@
+# Keep the build context small and, above all, keep credentials out of it.
+.env
+.env.local
+*.env
+!.env.example
+
+target/
+!target/*.jar
+
+.git
+.gitignore
+.idea
+*.iml
+.vscode
+
+*.md
+docs/

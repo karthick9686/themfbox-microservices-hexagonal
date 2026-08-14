@@ -1,18 +1,21 @@
 package com.hexagonal.portfolio.domain.service;
 
-import com.hexagonal.portfolio.domain.model.InvestorTransactionCams;
-import com.hexagonal.portfolio.domain.model.InvestorTransactionKarvy;
-
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import com.hexagonal.portfolio.domain.model.InvestorTransactionCams;
+import com.hexagonal.portfolio.domain.model.InvestorTransactionKarvy;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Minus/reversal transaction cancellation rules, carried over verbatim from the legacy
  * {@code TransactionDataUtils}. Only the CAMS and Karvy variants are reachable from the
  * investor-portfolio use case.
  */
+@Slf4j
 public class TransactionDataUtils {
 
     public static List<InvestorTransactionCams> removeCamsMinusTransaction(List<InvestorTransactionCams> list)
@@ -71,7 +74,7 @@ public class TransactionDataUtils {
         }
         catch(Exception ex)
         {
-            ex.printStackTrace();
+            log.error("Failed to cancel CAMS minus transactions; returning the list unfiltered", ex);
         }
         return list;
     }
@@ -129,7 +132,7 @@ public class TransactionDataUtils {
         }
         catch(Exception ex)
         {
-            ex.printStackTrace();
+            log.error("Failed to cancel Karvy minus transactions; returning the list unfiltered", ex);
         }
         return list;
     }

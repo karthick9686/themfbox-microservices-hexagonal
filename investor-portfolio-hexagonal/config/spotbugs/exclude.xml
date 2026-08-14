@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SpotBugs exclusions.
+
+  SpotBugs reads bytecode, so it sees Lombok's generated members as ordinary code and reports
+  them as if a developer had written them. Those exclusions are legitimate: the code cannot be
+  edited to satisfy the rule. Everything else here is scoped to a package and a pattern rather
+  than switched off wholesale.
+-->
+<FindBugsFilter>
+
+    <!-- Payload and entity classes are Lombok @Data holders. EI_EXPOSE_REP fires on every
+         accessor that returns a Date or a collection; the classes exist precisely to carry
+         those references, and defensive copying would change the serialised output. -->
+    <Match>
+        <Or>
+            <Package name="~com\.hexagonal\.portfolio\.domain\.model.*"/>
+            <Package name="~com\.hexagonal\.portfolio\.adapter\.out\.persistence\.entity.*"/>
+        </Or>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2,EI_EXPOSE_STATICREP2"/>
+    </Match>
+
+    <!-- Lombok-generated equals/hashCode/toString on @Data classes. -->
+    <Match>
+        <Or>
+            <Package name="~com\.hexagonal\.portfolio\.domain\.model.*"/>
+            <Package name="~com\.hexagonal\.portfolio\.adapter\.out\.persistence\.entity.*"/>
+        </Or>
+        <Bug pattern="HE_EQUALS_USE_HASHCODE,NP_METHOD_PARAMETER_TIGHTENS_ANNOTATION"/>
+    </Match>
+
+    <!-- Generated Spring configuration proxies. -->
+    <Match>
+        <Package name="~com\.hexagonal\.portfolio\.config.*"/>
+        <Bug pattern="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE"/>
+    </Match>
+
+    <!-- Tests construct deliberately odd fixtures to exercise edge cases. -->
+    <Match>
+        <Source name="~.*[/\\]src[/\\]test[/\\].*"/>
+    </Match>
+
+</FindBugsFilter>
